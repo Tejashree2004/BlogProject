@@ -127,9 +127,17 @@ body {
 
 .logo {
   font-size: 22px;
-  font-weight: bold;
-  color: #3b82f6;
+  font-weight: 800;
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
 }
+
+
+
 
 .search {
   flex: 1;
@@ -299,6 +307,7 @@ body {
   color: #3b82f6;
   margin-top: 4px;
 }
+
 
 .modal-copy:hover {
   color: #60a5fa;
@@ -502,5 +511,119 @@ body {
   cursor: pointer;
 }
 
+/* =======================
+   CREATE BLOG FORM
+======================= */
+.create-blog-form input,
+.create-blog-form textarea {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: white;
+}
+
+.create-btn {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+/* =======================
+   CREATE BLOG PAGE LAYOUT
+======================= */
+.create-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.create-blog-form {
+  width: 100%;
+  max-width: 600px;
+  background: #020617;
+  padding: 28px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+/* =======================
+   CREATE BLOG TITLE
+======================= */
+.create-title {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #3b82f6;              /* blue accent */
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+
+/* subtle divider under title */
+.create-title::after {
+  content: "";
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+.btn-center {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
 
 
+/* =======================
+   GO BACK BUTTON (FIXED)
+======================= */
+.go-back-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 10000;
+}
+
+.go-back-btn:hover {
+  background: #111827;
+}
+
+/* =========================
+   Card Paragraphs (Truncated 2 lines)
+========================= */
+.card p {
+  display: -webkit-box;          /* multi-line truncation support */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+  max-height: 3em;               /* 2 lines * 1.5 line-height */
+  color: #d1d5db;
+  white-space: normal;           /* multiline text break support */
+}
+
+/* =========================
+   Full Page Content Paragraphs
+========================= */
+.fullpage-content p {
+  display: block;
+  overflow: visible;
+  color: #e5e7eb;
+  white-space: pre-wrap;         /* line breaks maintain करायला */
+}

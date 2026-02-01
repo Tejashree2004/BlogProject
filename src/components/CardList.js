@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 
-
 function CardList({ items = [], search = "" }) {
   const [cards, setCards] = useState(items);
   const [selectedCard, setSelectedCard] = useState(null);
@@ -17,7 +16,7 @@ function CardList({ items = [], search = "" }) {
 
   const deleteCard = (id) => {
     setCards((prev) => prev.filter((item) => item.id !== id));
-    setSelectedCard(null);
+    setSelectedCard(null); // go back after delete
   };
 
   const filterByCategory = (category) =>
@@ -50,6 +49,7 @@ function CardList({ items = [], search = "" }) {
             <span
               className="copy-icon"
               onClick={(e) => copyData(item, e)}
+              style={{ color: "white" }}
             >
               ⧉
             </span>
@@ -60,30 +60,34 @@ function CardList({ items = [], search = "" }) {
 
   return (
     <>
-      {/* MY BLOGS */}
-      {blogs.length > 0 && (
+      {/* LIST VIEW */}
+      {!selectedCard && (
         <>
-          <h2 className="section-title">My Blogs</h2>
-          <div className="card-container">{renderCards(blogs)}</div>
+          {blogs.length > 0 && (
+            <>
+              <h2 className="section-title">My Blogs</h2>
+              <div className="card-container">{renderCards(blogs)}</div>
+            </>
+          )}
+
+          {feeds.length > 0 && (
+            <>
+              <h2 className="section-title">My Feed</h2>
+              <div className="card-container">{renderCards(feeds)}</div>
+            </>
+          )}
         </>
       )}
 
-      {/* MY FEED */}
-      {feeds.length > 0 && (
-        <>
-          <h2 className="section-title">My Feed</h2>
-          <div className="card-container">{renderCards(feeds)}</div>
-        </>
-      )}
-
-      {/* FULL-PAGE CARD VIEW */}
+      {/* FULL PAGE VIEW */}
       {selectedCard && (
         <div className="fullpage-card">
+          {/* ✅ GO BACK – CARD च्या बाहेर */}
           <button
-            className="close-btn"
+            className="go-back-btn"
             onClick={() => setSelectedCard(null)}
           >
-            ×
+            ← Go Back
           </button>
 
           <div className="fullpage-content">
@@ -91,19 +95,39 @@ function CardList({ items = [], search = "" }) {
             <img src={selectedCard.image} alt={selectedCard.title} />
             <p>{selectedCard.desc}</p>
 
-            <div className="actions">
-              {/* Delete button left */}
+            <div
+              className="actions"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginTop: "20px",
+              }}
+            >
+              {/* SMALL DELETE BUTTON */}
               <button
-                className="delete-btn"
                 onClick={() => deleteCard(selectedCard.id)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  background: "#1f2933",
+                  border: "1px solid #374151",
+                  color: "#f87171",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                }}
               >
                 Delete
               </button>
 
-              {/* Copy icon right */}
+              {/* WHITE COPY ICON */}
               <span
-                className="copy-icon"
                 onClick={(e) => copyData(selectedCard, e)}
+                style={{
+                  fontSize: "22px",
+                  cursor: "pointer",
+                  color: "white",
+                }}
               >
                 ⧉
               </span>

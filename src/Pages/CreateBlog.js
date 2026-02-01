@@ -23,88 +23,87 @@ function CreateBlog() {
     fileRef.current.click();
   };
 
- return (
-  <div className="create-page">
-    {/* Heading for the form */}
-    <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
-      Create a New Blog
-    </h2>
+  return (
+    <div className="create-page">
+      <form className="create-blog-form" onSubmit={handleSubmit}>
+        
+        {/* ✅ Title INSIDE form */}
+        <h2 className="create-title">Create a New Blog</h2>
 
-    <form className="create-blog-form" onSubmit={handleSubmit}>
-      {/* Blog title */}
-      <input
-        type="text"
-        placeholder="Blog Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        required
-      />
-
-      {/* Attached file below textarea */}
-      <div style={{ marginTop: "12px" }}>
-        <input
-          type="file"
-          ref={fileRef}
-          style={{ display: "none" }}
-          onChange={(e) => setFile(e.target.files[0])}
-        />
-
+        {/* Blog title */}
         <input
           type="text"
-          readOnly
-          placeholder="Attached file"
-          value={file ? file.name : ""}
-          onClick={openFilePicker}
-          style={{
-            width: "100%",
-            padding: "12px",
-            borderRadius: "6px",
-            border: "1px dashed",
-            cursor: "pointer",
-            boxSizing: "border-box",
-          }}
+          placeholder="Blog Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
         />
 
-        {file && (
-          <button
-            type="button"
-            onClick={clearFile}
+        {/* File upload */}
+        <div style={{ marginTop: "12px" }}>
+          <input
+            type="file"
+            ref={fileRef}
+            style={{ display: "none" }}
+            onChange={(e) => setFile(e.target.files[0])}
+          />
+
+          <input
+            type="text"
+            readOnly
+            placeholder="Attached file"
+            value={file ? file.name : ""}
+            onClick={openFilePicker}
             style={{
-              marginTop: "6px",
-              padding: "6px 12px",
+              width: "100%",
+              padding: "12px",
               borderRadius: "6px",
+              border: "1px dashed #3b82f6",
               cursor: "pointer",
+              background: "transparent",
+              color: "white",
             }}
-          >
-            Remove File
-          </button>
-        )}
-      </div>
+          />
 
-      {/* Description */}
-      <textarea
-        placeholder="Description"
-        rows="6"
-        value={desc}
-        onChange={(e) => setDesc(e.target.value)}
-        onInput={(e) => {
-          e.target.style.height = "auto";
-          e.target.style.height = e.target.scrollHeight + "px";
-        }}
-        required
-      ></textarea>
+          {file && (
+            <button
+              type="button"
+              onClick={clearFile}
+              style={{
+                marginTop: "6px",
+                padding: "6px 12px",
+                borderRadius: "6px",
+                cursor: "pointer",
+                background: "#1e293b",
+                color: "#f87171",
+                border: "1px solid #374151",
+              }}
+            >
+              Remove File
+            </button>
+          )}
+        </div>
 
-      <button
-        type="submit"
-        className="create-btn"
-        style={{ display: "block", margin: "20px auto" }}
-      >
-        Create
-      </button>
-    </form>
-  </div>
-);
+        {/* Description */}
+        <textarea
+          placeholder="Description"
+          rows="6"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+          onInput={(e) => {
+            e.target.style.height = "auto";
+            e.target.style.height = e.target.scrollHeight + "px";
+          }}
+          required
+        ></textarea>
 
+       <div className="btn-center">
+  <button type="submit" className="create-btn">Create</button>
+</div>
+
+      </form>
+    </div>
+  );
 }
 
 export default CreateBlog;
