@@ -541,10 +541,11 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;   /* ✅ vertical center */
   padding: 40px 20px;
   box-sizing: border-box;
 }
+
 
 .create-blog-form {
   width: 100%;
@@ -554,6 +555,10 @@ body {
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.6);
 }
+
+
+
+
 /* =======================
    CREATE BLOG TITLE
 ======================= */

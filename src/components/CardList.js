@@ -87,7 +87,7 @@ function CardList({ items = [], search = "" }) {
             className="go-back-btn"
             onClick={() => setSelectedCard(null)}
           >
-            ← Go Back
+           ⮌
           </button>
 
           <div className="fullpage-content">

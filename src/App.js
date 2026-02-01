@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import Login from "./Pages/Login";
 import Signup from "./Pages/Signup";
+import VerifyEmail from "./Pages/VerifyEmail"; // ✅ NEW
 import Blog from "./Pages/Blog";
 import CreateBlog from "./Pages/CreateBlog";
 
@@ -18,6 +19,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
+        {/* ✅ Email verification route */}
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         <Route
           path="/blog"
