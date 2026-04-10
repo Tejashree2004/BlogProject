@@ -27,10 +27,23 @@ namespace BlogApi.Controllers
         // ================= PUBLIC ================= //
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
         {
-            var blogs = await _blogService.GetAll();
-            return Ok(blogs);
+            var allBlogs = await _blogService.GetAll();
+
+            var totalCount = allBlogs.Count();
+
+            var blogs = allBlogs
+                .OrderByDescending(b => b.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(new
+            {
+                data = blogs,
+                totalCount
+            });
         }
 
         [HttpGet("{id}")]
@@ -38,6 +51,7 @@ namespace BlogApi.Controllers
         {
             var blog = await _blogService.GetById(id);
             if (blog == null) return NotFound();
+
             return Ok(blog);
         }
 
@@ -45,30 +59,57 @@ namespace BlogApi.Controllers
 
         [Authorize]
         [HttpGet("myblogs")]
-        public async Task<IActionResult> GetMyBlogs()
+        public async Task<IActionResult> GetMyBlogs(int pageNumber = 1, int pageSize = 10)
         {
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
 
-            var blogs = (await _blogService.GetAll())
-                .Where(b => b.Author == username)
+            var allBlogs = (await _blogService.GetAll())
+                .Where(b => b.Author == username);
+
+            var totalCount = allBlogs.Count();
+
+            var blogs = allBlogs
+                .OrderByDescending(b => b.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToList();
 
-            return Ok(blogs);
+            return Ok(new
+            {
+                data = blogs,
+                totalCount
+            });
         }
 
-        [Authorize]
+        // ================= FEED (GUEST + USER) ================= //
+
+        [AllowAnonymous]
         [HttpGet("feed")]
-        public async Task<IActionResult> GetFeed()
+        public async Task<IActionResult> GetFeed(int pageNumber = 1, int pageSize = 10)
         {
             var username = GetUsernameFromToken();
-            if (string.IsNullOrEmpty(username)) return Unauthorized();
+            var allBlogs = await _blogService.GetAll();
 
-            var blogs = (await _blogService.GetAll())
-                .Where(b => b.Author != username)
+            // ✅ Guest → ALL blogs
+            // ✅ Logged-in → exclude own blogs
+            var filteredBlogs = string.IsNullOrEmpty(username)
+                ? allBlogs
+                : allBlogs.Where(b => b.Author != username);
+
+            var totalCount = filteredBlogs.Count();
+
+            var blogs = filteredBlogs
+                .OrderByDescending(b => b.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToList();
 
-            return Ok(blogs);
+            return Ok(new
+            {
+                data = blogs,
+                totalCount
+            });
         }
 
         // ================= SAVED BLOGS ================= //
@@ -131,6 +172,7 @@ namespace BlogApi.Controllers
             if (image != null)
             {
                 var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
                 if (!Directory.Exists(folderPath))
                     Directory.CreateDirectory(folderPath);
 
@@ -175,6 +217,7 @@ namespace BlogApi.Controllers
 
             var blog = await _blogService.GetById(id);
             if (blog == null) return NotFound();
+
             if (blog.Author != username) return Forbid();
 
             string imagePath = null;
@@ -182,6 +225,7 @@ namespace BlogApi.Controllers
             if (image != null)
             {
                 var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
                 if (!Directory.Exists(folderPath))
                     Directory.CreateDirectory(folderPath);
 
@@ -195,6 +239,11 @@ namespace BlogApi.Controllers
             }
 
             var updated = await _blogService.Update(id, title, desc, category, isActive, imagePath);
+
+            if (updated != null)
+            {
+                updated.UpdatedDate = DateTime.UtcNow;
+            }
 
             return Ok(updated);
         }
@@ -213,7 +262,8 @@ namespace BlogApi.Controllers
 
             var success = await _blogService.Delete(id, username);
 
-            if (!success) return BadRequest(new { message = "Delete failed." });
+            if (!success)
+                return BadRequest(new { message = "Delete failed." });
 
             return Ok(new { message = "Blog deleted successfully." });
         }

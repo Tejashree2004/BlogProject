@@ -24,6 +24,9 @@ namespace BlogApi.Models
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
+        // 🔥 NEW FIELD (EDIT TIME TRACK)
+        public DateTime? UpdatedDate { get; set; }
+
         public bool IsActive { get; set; } = true;
     }
 }

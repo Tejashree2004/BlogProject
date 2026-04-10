@@ -13,14 +13,14 @@ namespace BlogApi.Services
         {
             _context = context;
 
-            // 🔥 uploads folder path (same as before)
             _uploadPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads");
 
             if (!Directory.Exists(_uploadPath))
                 Directory.CreateDirectory(_uploadPath);
         }
 
-        // ✅ Get all active blogs
+        // ================= EXISTING METHODS (UNCHANGED) ================= //
+
         public async Task<List<Blog>> GetAll()
         {
             return await _context.Blogs
@@ -28,25 +28,25 @@ namespace BlogApi.Services
                 .ToListAsync();
         }
 
-        // ✅ Get blog by ID
         public async Task<Blog?> GetById(int id)
         {
             return await _context.Blogs
                 .FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
         }
 
-        // ✅ Create blog
         public async Task<Blog> Create(Blog blog)
         {
             blog.IsUserCreated = true;
             blog.CreatedDate = DateTime.UtcNow;
+
+            // 🔥 NEW (safe default)
+            blog.UpdatedDate = null;
+
             blog.IsActive = true;
 
-            // 🔥 fallback author
             if (string.IsNullOrWhiteSpace(blog.Author))
                 blog.Author = "guest_" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            // 🔥 Image fallback
             if (string.IsNullOrWhiteSpace(blog.Image))
                 blog.Image = "https://via.placeholder.com/300x200";
 
@@ -56,7 +56,6 @@ namespace BlogApi.Services
             return blog;
         }
 
-        // ✅ Update blog
         public async Task<Blog?> Update(int id, string title, string desc, string category, bool isActive, string? newImagePath = null)
         {
             var blog = await _context.Blogs.FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
@@ -67,7 +66,9 @@ namespace BlogApi.Services
             blog.Category = category ?? blog.Category;
             blog.IsActive = isActive;
 
-            // 🔥 Update image
+            // 🔥 NEW (IMPORTANT)
+            blog.UpdatedDate = DateTime.UtcNow;
+
             if (!string.IsNullOrWhiteSpace(newImagePath))
             {
                 if (!string.IsNullOrWhiteSpace(blog.Image) && blog.Image.StartsWith("/uploads"))
@@ -84,7 +85,6 @@ namespace BlogApi.Services
             return blog;
         }
 
-        // ✅ Delete blog (soft delete)
         public async Task<bool> Delete(int id, string? username = null)
         {
             var blog = await _context.Blogs.FirstOrDefaultAsync(b => b.Id == id);
@@ -95,7 +95,6 @@ namespace BlogApi.Services
             if (!string.IsNullOrWhiteSpace(username) && blog.Author != username)
                 return false;
 
-            // 🔥 Delete uploaded image
             if (!string.IsNullOrWhiteSpace(blog.Image) && blog.Image.StartsWith("/uploads"))
             {
                 var fullPath = Path.Combine(_uploadPath, Path.GetFileName(blog.Image));
@@ -107,6 +106,56 @@ namespace BlogApi.Services
 
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        // ================= 🔥 PAGINATION METHODS (UNCHANGED) ================= //
+
+        public async Task<(List<Blog> Data, int TotalCount)> GetPaginated(int pageNumber, int pageSize)
+        {
+            var query = _context.Blogs
+                .Where(b => b.IsActive)
+                .OrderByDescending(b => b.CreatedDate);
+
+            var totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (data, totalCount);
+        }
+
+        public async Task<(List<Blog> Data, int TotalCount)> GetMyBlogsPaginated(string username, int pageNumber, int pageSize)
+        {
+            var query = _context.Blogs
+                .Where(b => b.IsActive && b.Author == username)
+                .OrderByDescending(b => b.CreatedDate);
+
+            var totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (data, totalCount);
+        }
+
+        public async Task<(List<Blog> Data, int TotalCount)> GetFeedPaginated(string username, int pageNumber, int pageSize)
+        {
+            var query = _context.Blogs
+                .Where(b => b.IsActive && b.Author != username)
+                .OrderByDescending(b => b.CreatedDate);
+
+            var totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (data, totalCount);
         }
     }
 }

@@ -151,6 +151,7 @@ const getImageSrc = (item) => {
             <h2>{selectedCard.title}</h2>
             <img src={getImageSrc(selectedCard)} alt={selectedCard.title} />
             <p>{selectedCard.desc}</p>
+            
 
 <div
   style={{
@@ -163,47 +164,47 @@ const getImageSrc = (item) => {
   <div style={{ display: "flex", gap: "8px" }}>
     
     <button
-      style={{
-        padding: "4px 10px",
-        borderRadius: "6px",
-        border: "1px solid #374151",
-        background: canDelete ? "#1f2933" : "#374151",
-        color: canDelete ? "#60a5fa" : "#9ca3af",
-        cursor: canDelete ? "pointer" : "not-allowed",
-        fontSize: "12px",
-      }}
-      onClick={() => {
-        if (!canDelete) return;
-        navigate(`/edit-blog/${selectedCard.id}`, {
-          state: { blog: selectedCard },
-        });
-      }}
-      disabled={!canDelete}
-    >
-      Edit
-    </button>
-    <button
-      style={{
-        padding: "4px 10px",
-        borderRadius: "6px",
-        border: "1px solid #374151",
-        background: canDelete ? "#1f2933" : "#374151",
-        color: canDelete ? "#f87171" : "#9ca3af",
-        cursor: canDelete ? "pointer" : "not-allowed",
-        fontSize: "12px",
-      }}
-      onClick={() => {
-        if (!canDelete) {
-          alert("You can delete only your own blog");
-          return;
-        }
-        setShowDeletePopup(true);
-      }}
-      disabled={!canDelete}
-    >
-      Delete
-    </button>
+  style={{
+    padding: "4px 10px",
+    borderRadius: "6px",
+    border: "1px solid #374151",
+    background: canDelete ? "#1f2933" : "#374151",
+    color: canDelete ? "#60a5fa" : "#9ca3af",
+    cursor: canDelete ? "pointer" : "default", // 🔥 FIX
+    fontSize: "12px",
+  }}
+  onClick={() => {
+    if (!canDelete) return;
+    navigate(`/edit-blog/${selectedCard.id}`, {
+      state: { blog: selectedCard },
+    });
+  }}
+  disabled={!canDelete}
+>
+  Edit
+</button>
 
+<button
+  style={{
+    padding: "4px 10px",
+    borderRadius: "6px",
+    border: "1px solid #374151",
+    background: canDelete ? "#1f2933" : "#374151",
+    color: canDelete ? "#f87171" : "#9ca3af",
+    cursor: canDelete ? "pointer" : "default", // 🔥 FIX
+    fontSize: "12px",
+  }}
+  onClick={() => {
+    if (!canDelete) {
+      alert("You can delete only your own blog");
+      return;
+    }
+    setShowDeletePopup(true);
+  }}
+  disabled={!canDelete}
+>
+  Delete
+</button>
   </div>
 
   <span className="copy-icon" onClick={() => copyData(selectedCard)}>

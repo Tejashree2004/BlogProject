@@ -6,18 +6,25 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 20000, // 🔥 increased from 10000 → avoids OTP/email timeout crash
+  timeout: 20000,
 });
 
 // ================= REQUEST INTERCEPTOR ================= //
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("jwtToken");
+    try {
+      const token = localStorage.getItem("jwtToken");
 
-    console.log("Token being sent:", token);
+      console.log("Token being sent:", token);
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // ✅ Only attach if token exists
+      if (token && token !== "null" && token !== "undefined") {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        delete config.headers.Authorization; // 🔥 prevents sending invalid header
+      }
+    } catch (err) {
+      console.error("Token read error:", err);
     }
 
     return config;
@@ -34,7 +41,7 @@ axiosInstance.interceptors.response.use(
 
     // ================= TIMEOUT HANDLING ================= //
     if (error.code === "ECONNABORTED") {
-      console.error("⏰ Request timeout - backend slow or email service stuck");
+      console.error("⏰ Request timeout");
       return Promise.reject({
         status: 408,
         message: "Request timeout. Please try again.",
@@ -56,11 +63,17 @@ axiosInstance.interceptors.response.use(
     // ================= ERROR HANDLING ================= //
 
     if (status === 401) {
-      console.warn("Unauthorized - token expired");
-      localStorage.clear();
+      const isGuest = localStorage.getItem("userType") === "guest";
 
-      if (!window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
+      console.warn("Unauthorized");
+
+      // ✅ Don't redirect guest users
+      if (!isGuest) {
+        localStorage.removeItem("jwtToken"); // 🔥 safer than clear()
+
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = "/login";
+        }
       }
     }
 

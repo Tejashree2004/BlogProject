@@ -2,27 +2,38 @@ import axiosInstance from "./axiosInstance";
 
 // ===================== BLOG ROUTES ===================== //
 
-export const getBlogs = async () => {
-  const res = await axiosInstance.get("/blogs");
+// 🔥 Paginated Blogs
+export const getBlogs = async (pageNumber = 1, pageSize = 10) => {
+  const res = await axiosInstance.get(
+    `/blogs?pageNumber=${pageNumber}&pageSize=${pageSize}`
+  );
   return res.data;
 };
 
-export const getMyBlogs = async () => {
-  const res = await axiosInstance.get("/blogs/myblogs");
+// 🔥 My Blogs (Paginated)
+export const getMyBlogs = async (pageNumber = 1, pageSize = 10) => {
+  const res = await axiosInstance.get(
+    `/blogs/myblogs?pageNumber=${pageNumber}&pageSize=${pageSize}`
+  );
   return res.data;
 };
 
-export const getMyFeed = async () => {
-  const res = await axiosInstance.get("/blogs/feed");
+// 🔥 My Feed (Paginated)
+export const getMyFeed = async (pageNumber = 1, pageSize = 10) => {
+  const res = await axiosInstance.get(
+    `/blogs/feed?pageNumber=${pageNumber}&pageSize=${pageSize}`
+  );
   return res.data;
 };
 
+// 🔥 Single Blog
 export const getBlogById = async (id) => {
   const res = await axiosInstance.get(`/blogs/${id}`);
   return res.data;
 };
 
-// 🔥 UPDATED (FILE UPLOAD SUPPORT + PREVIEW SAFE)
+// ===================== CREATE ===================== //
+
 export const createBlog = async (data) => {
   const formData = new FormData();
 
@@ -32,7 +43,6 @@ export const createBlog = async (data) => {
   formData.append("isActive", data.isActive);
   formData.append("isUserCreated", data.isUserCreated);
 
-  // 🔥 send actual file
   if (data.file) {
     formData.append("image", data.file);
   }
@@ -45,6 +55,8 @@ export const createBlog = async (data) => {
 
   return res.data;
 };
+
+// ===================== DELETE ===================== //
 
 export const deleteBlogApi = async (id) => {
   const res = await axiosInstance.delete(`/blogs/${id}`);

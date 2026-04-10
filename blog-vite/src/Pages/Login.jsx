@@ -36,62 +36,73 @@ function Login() {
         password,
       });
 
-      console.log("🔥 LOGIN RESPONSE:", res);
+      console.log("LOGIN RESPONSE:", res);
 
-      // ✅ IMPORTANT FIX
-      if (!res || !res.token) {
+      // 🔥 FIX: handle both res.token and res.data.token cases
+      const token = res?.token || res?.data?.token;
+      const returnedUsername =
+        res?.username || res?.data?.username || username;
+      const email = res?.email || res?.data?.email || username;
+
+      if (!token) {
         setError("Login failed: Token not received");
         return;
       }
 
-      const { username: returnedUsername, email, token } = res;
-
-      // ✅ SAVE TOKEN
+      // ✅ STORE DATA
       localStorage.setItem("jwtToken", token);
-
-      // ✅ SAVE USER DATA
       localStorage.setItem("username", returnedUsername);
       localStorage.setItem("email", email);
 
-      // remove guest flag
+      // 🔥 REMOVE GUEST MODE
       localStorage.removeItem("userType");
+      localStorage.removeItem("guestId");
 
-      console.log("✅ Token saved:", token);
+      console.log("✅ Token stored:", token);
 
       navigate("/blog");
     } catch (err) {
-      console.error("❌ Login error:", err.response?.data || err.message);
+      console.error("LOGIN ERROR:", err);
 
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        err?.message ||
+        "Login failed";
+
+      // 🔥 EMAIL NOT VERIFIED CASE
       if (
-        err.response?.data?.message ===
-        "Invalid credentials or email not verified."
+        message === "Invalid credentials or email not verified." ||
+        message.toLowerCase().includes("not verified")
       ) {
         const proceed = window.confirm(
           "You haven't verified your email yet. Do you want to continue as Guest?"
         );
 
         if (proceed) {
-          localStorage.setItem("userType", "guest");
-          localStorage.removeItem("username");
-          localStorage.removeItem("email");
-          localStorage.removeItem("jwtToken");
-
-          navigate("/blog");
+          handleGuest();
         }
       } else {
-        setError(err.response?.data?.message || "Login failed");
+        setError(message);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ GUEST LOGIN
+  // ✅ GUEST LOGIN (SAFE)
   const handleGuest = () => {
+    const guestId = "guest_" + Date.now();
+
     localStorage.setItem("userType", "guest");
+    localStorage.setItem("guestId", guestId);
+
+    // 🔥 CLEAR AUTH DATA
     localStorage.removeItem("username");
     localStorage.removeItem("email");
     localStorage.removeItem("jwtToken");
+
+    console.log("👤 Guest login:", guestId);
 
     navigate("/blog");
   };
@@ -152,13 +163,7 @@ function Login() {
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "14px",
-            marginTop: "10px",
-          }}
-        >
+        <p style={{ textAlign: "center", fontSize: "14px", marginTop: "10px" }}>
           Or{" "}
           <span
             onClick={handleGuest}
@@ -172,13 +177,7 @@ function Login() {
           </span>
         </p>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "14px",
-            marginTop: "12px",
-          }}
-        >
+        <p style={{ textAlign: "center", fontSize: "14px", marginTop: "12px" }}>
           Don't have an account?{" "}
           <span
             onClick={() => navigate("/signup")}
