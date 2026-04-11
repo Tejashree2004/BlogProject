@@ -26,6 +26,18 @@ export const getMyFeed = async (pageNumber = 1, pageSize = 10) => {
   return res.data;
 };
 
+// 🔥 NEW: Saved Blogs (Paginated) ✅
+export const getSavedBlogsPaginated = async (
+  userId,
+  pageNumber = 1,
+  pageSize = 10
+) => {
+  const res = await axiosInstance.get(
+    `/savedblogs?userId=${userId}&pageNumber=${pageNumber}&pageSize=${pageSize}`
+  );
+  return res.data;
+};
+
 // 🔥 Single Blog
 export const getBlogById = async (id) => {
   const res = await axiosInstance.get(`/blogs/${id}`);

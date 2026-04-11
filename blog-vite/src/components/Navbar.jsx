@@ -58,7 +58,9 @@ function Navbar({ search, setSearch, setShowSaved }) {
         placeholder="Search blogs..."
         className="search"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+  setSearch(e.target.value);
+}}
       />
 
       <div className="nav-right">

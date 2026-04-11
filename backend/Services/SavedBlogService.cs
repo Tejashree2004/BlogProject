@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using BlogApi.Data;
+using BlogApi.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlogApi.Services
 {
@@ -11,10 +15,14 @@ namespace BlogApi.Services
         private readonly string _filePath;
         private readonly object _fileLock = new();
 
-        public SavedBlogService(IWebHostEnvironment env)
+        private readonly AppDbContext _context;
+
+        public SavedBlogService(IWebHostEnvironment env, AppDbContext context)
         {
             var contentRoot = env?.ContentRootPath ?? AppContext.BaseDirectory;
             _filePath = Path.Combine(contentRoot, "savedBlogs.json");
+
+            _context = context;
 
             try
             {
@@ -25,10 +33,7 @@ namespace BlogApi.Services
                 if (!File.Exists(_filePath))
                     File.WriteAllText(_filePath, "{}");
             }
-            catch
-            {
-                // log in real apps
-            }
+            catch { }
         }
 
         // ================= READ =================
@@ -74,14 +79,11 @@ namespace BlogApi.Services
 
                     File.WriteAllText(_filePath, json);
                 }
-                catch
-                {
-                    // log in real apps
-                }
+                catch { }
             }
         }
 
-        // ================= GET SAVED BLOGS =================
+        // ================= GET SAVED IDS =================
         public List<int> GetSavedBlogIds(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
@@ -94,7 +96,35 @@ namespace BlogApi.Services
                 : new List<int>();
         }
 
-        // ================= SAVE BLOG =================
+        // 🔥🔥🔥 FINAL OPTIMIZED METHOD
+        public async Task<(List<Blog> Blogs, int TotalCount)> GetSavedBlogsPaginated(
+            string userId,
+            int pageNumber,
+            int pageSize)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return (new List<Blog>(), 0);
+
+            var savedIds = GetSavedBlogIds(userId);
+
+            if (savedIds.Count == 0)
+                return (new List<Blog>(), 0);
+
+            var query = _context.Blogs
+                .Where(b => b.IsActive && savedIds.Contains(b.Id))
+                .OrderByDescending(b => b.CreatedDate);
+
+            var totalCount = await query.CountAsync();
+
+            var blogs = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (blogs, totalCount);
+        }
+
+        // ================= SAVE =================
         public void SaveBlog(string userId, int blogId)
         {
             if (string.IsNullOrWhiteSpace(userId))
@@ -112,7 +142,7 @@ namespace BlogApi.Services
             }
         }
 
-        // ================= UNSAVE BLOG =================
+        // ================= UNSAVE =================
         public void UnsaveBlog(string userId, int blogId)
         {
             if (string.IsNullOrWhiteSpace(userId))

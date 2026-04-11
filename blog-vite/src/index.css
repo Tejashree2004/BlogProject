@@ -1053,19 +1053,24 @@ body {
 }
 }
 
+
 .pagination-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  margin-top: 24px;
+
+  margin-top: 10px;     /* 🔥 reduced */
+  margin-bottom: 20px;
+
+  padding-right: 20px;
 }
 
 .pagination-btn {
   padding: 6px 14px;
   border-radius: 6px;
   border: 1px solid #374151;
-  background-color: transparent; /* 🔥 theme safe */
+  background-color: transparent;
   color: #e5e7eb;
   font-size: 13px;
   cursor: pointer;
@@ -1076,12 +1081,9 @@ body {
   background-color: #374151;
 }
 
-
-
 .pagination-btn:disabled {
   opacity: 0.4;
-
-  cursor: default;   /* 🔥 FIX: no red icon */
+  cursor: default;
 }
 
 .pagination-info {

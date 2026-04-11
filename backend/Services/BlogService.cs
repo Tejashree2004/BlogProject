@@ -19,7 +19,7 @@ namespace BlogApi.Services
                 Directory.CreateDirectory(_uploadPath);
         }
 
-        // ================= EXISTING METHODS (UNCHANGED) ================= //
+        // ================= BASIC METHODS ================= //
 
         public async Task<List<Blog>> GetAll()
         {
@@ -34,14 +34,19 @@ namespace BlogApi.Services
                 .FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
         }
 
+        // 🔥 NEW: Queryable (IMPORTANT FOR SEARCH FIX)
+        public IQueryable<Blog> GetQueryable()
+        {
+            return _context.Blogs.Where(b => b.IsActive);
+        }
+
+        // ================= CREATE ================= //
+
         public async Task<Blog> Create(Blog blog)
         {
             blog.IsUserCreated = true;
             blog.CreatedDate = DateTime.UtcNow;
-
-            // 🔥 NEW (safe default)
             blog.UpdatedDate = null;
-
             blog.IsActive = true;
 
             if (string.IsNullOrWhiteSpace(blog.Author))
@@ -56,17 +61,26 @@ namespace BlogApi.Services
             return blog;
         }
 
-        public async Task<Blog?> Update(int id, string title, string desc, string category, bool isActive, string? newImagePath = null)
+        // ================= UPDATE ================= //
+
+        public async Task<Blog?> Update(
+            int id,
+            string title,
+            string desc,
+            string category,
+            bool isActive,
+            string? newImagePath = null
+        )
         {
-            var blog = await _context.Blogs.FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
+            var blog = await _context.Blogs
+                .FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
+
             if (blog == null) return null;
 
             blog.Title = title ?? blog.Title;
             blog.Desc = desc ?? blog.Desc;
             blog.Category = category ?? blog.Category;
             blog.IsActive = isActive;
-
-            // 🔥 NEW (IMPORTANT)
             blog.UpdatedDate = DateTime.UtcNow;
 
             if (!string.IsNullOrWhiteSpace(newImagePath))
@@ -84,6 +98,8 @@ namespace BlogApi.Services
             await _context.SaveChangesAsync();
             return blog;
         }
+
+        // ================= DELETE ================= //
 
         public async Task<bool> Delete(int id, string? username = null)
         {
@@ -108,7 +124,7 @@ namespace BlogApi.Services
             return true;
         }
 
-        // ================= 🔥 PAGINATION METHODS (UNCHANGED) ================= //
+        // ================= PAGINATION ================= //
 
         public async Task<(List<Blog> Data, int TotalCount)> GetPaginated(int pageNumber, int pageSize)
         {
@@ -126,7 +142,10 @@ namespace BlogApi.Services
             return (data, totalCount);
         }
 
-        public async Task<(List<Blog> Data, int TotalCount)> GetMyBlogsPaginated(string username, int pageNumber, int pageSize)
+        public async Task<(List<Blog> Data, int TotalCount)> GetMyBlogsPaginated(
+            string username,
+            int pageNumber,
+            int pageSize)
         {
             var query = _context.Blogs
                 .Where(b => b.IsActive && b.Author == username)
@@ -142,14 +161,42 @@ namespace BlogApi.Services
             return (data, totalCount);
         }
 
-        public async Task<(List<Blog> Data, int TotalCount)> GetFeedPaginated(string username, int pageNumber, int pageSize)
+        // ================= 🔥 FINAL FEED (SEARCH FIXED) ================= //
+
+        public async Task<(List<Blog> Data, int TotalCount)> GetFeedPaginated(
+            string? username,
+            int pageNumber,
+            int pageSize,
+            string? search = ""
+        )
         {
             var query = _context.Blogs
-                .Where(b => b.IsActive && b.Author != username)
-                .OrderByDescending(b => b.CreatedDate);
+                .Where(b => b.IsActive);
 
+            // 🔥 Exclude current user blogs
+            if (!string.IsNullOrEmpty(username))
+            {
+                query = query.Where(b => b.Author != username);
+            }
+
+            // 🔥 GLOBAL SEARCH (BEFORE PAGINATION)
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+
+                query = query.Where(b =>
+                    (b.Title != null && b.Title.ToLower().Contains(lowerSearch)) ||
+                    (b.Desc != null && b.Desc.ToLower().Contains(lowerSearch))
+                );
+            }
+
+            // 🔥 SORTING
+            query = query.OrderByDescending(b => b.CreatedDate);
+
+            // 🔥 TOTAL COUNT AFTER SEARCH
             var totalCount = await query.CountAsync();
 
+            // 🔥 PAGINATION
             var data = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

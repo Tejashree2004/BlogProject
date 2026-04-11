@@ -1,4 +1,3 @@
-using BlogApi.Models;
 using BlogApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,15 +14,39 @@ namespace BlogApi.Controllers
             _service = service;
         }
 
-        // ✅ GET saved blogs for a user
+        // ✅ GET: /api/savedblogs/{userId}
         [HttpGet("{userId}")]
         public IActionResult GetSaved(string userId)
         {
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest("UserId required");
+
             var savedIds = _service.GetSavedBlogIds(userId);
             return Ok(savedIds);
         }
 
-        // ✅ POST save a blog
+        // 🔥 FIXED: PAGINATED SAVED BLOGS (ASYNC)
+        // GET: /api/savedblogs?userId=xyz&pageNumber=1&pageSize=10
+        [HttpGet]
+        public async Task<IActionResult> GetSavedPaginated(
+            [FromQuery] string userId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest("UserId required");
+
+            // ✅ FIX: await lagaya
+            var result = await _service.GetSavedBlogsPaginated(userId, pageNumber, pageSize);
+
+            return Ok(new
+            {
+                data = result.Blogs,
+                totalCount = result.TotalCount
+            });
+        }
+
+        // ✅ POST: /api/savedblogs/save
         [HttpPost("save")]
         public IActionResult Save([FromBody] SaveRequest request)
         {
@@ -31,10 +54,10 @@ namespace BlogApi.Controllers
                 return BadRequest("UserId required");
 
             _service.SaveBlog(request.UserId, request.BlogId);
-            return Ok();
+            return Ok(new { message = "Blog saved successfully" });
         }
 
-        // ✅ POST unsave a blog
+        // ✅ POST: /api/savedblogs/unsave
         [HttpPost("unsave")]
         public IActionResult Unsave([FromBody] SaveRequest request)
         {
@@ -42,11 +65,11 @@ namespace BlogApi.Controllers
                 return BadRequest("UserId required");
 
             _service.UnsaveBlog(request.UserId, request.BlogId);
-            return Ok();
+            return Ok(new { message = "Blog unsaved successfully" });
         }
     }
 
-    // ✅ Request model for save/unsave
+    // ✅ Request model
     public class SaveRequest
     {
         public string UserId { get; set; } = string.Empty;

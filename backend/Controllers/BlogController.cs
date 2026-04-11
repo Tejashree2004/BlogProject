@@ -29,20 +29,12 @@ namespace BlogApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll(int pageNumber = 1, int pageSize = 10)
         {
-            var allBlogs = await _blogService.GetAll();
-
-            var totalCount = allBlogs.Count();
-
-            var blogs = allBlogs
-                .OrderByDescending(b => b.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            var result = await _blogService.GetPaginated(pageNumber, pageSize);
 
             return Ok(new
             {
-                data = blogs,
-                totalCount
+                data = result.Data,
+                totalCount = result.TotalCount
             });
         }
 
@@ -64,51 +56,38 @@ namespace BlogApi.Controllers
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
 
-            var allBlogs = (await _blogService.GetAll())
-                .Where(b => b.Author == username);
-
-            var totalCount = allBlogs.Count();
-
-            var blogs = allBlogs
-                .OrderByDescending(b => b.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            var result = await _blogService.GetMyBlogsPaginated(username, pageNumber, pageSize);
 
             return Ok(new
             {
-                data = blogs,
-                totalCount
+                data = result.Data,
+                totalCount = result.TotalCount
             });
         }
 
-        // ================= FEED (GUEST + USER) ================= //
+        // ================= FEED ================= //
 
         [AllowAnonymous]
         [HttpGet("feed")]
-        public async Task<IActionResult> GetFeed(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetFeed(
+            int pageNumber = 1,
+            int pageSize = 10,
+            string? search = ""
+        )
         {
             var username = GetUsernameFromToken();
-            var allBlogs = await _blogService.GetAll();
 
-            // ✅ Guest → ALL blogs
-            // ✅ Logged-in → exclude own blogs
-            var filteredBlogs = string.IsNullOrEmpty(username)
-                ? allBlogs
-                : allBlogs.Where(b => b.Author != username);
-
-            var totalCount = filteredBlogs.Count();
-
-            var blogs = filteredBlogs
-                .OrderByDescending(b => b.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+            var result = await _blogService.GetFeedPaginated(
+                username,
+                pageNumber,
+                pageSize,
+                search
+            );
 
             return Ok(new
             {
-                data = blogs,
-                totalCount
+                data = result.Data,
+                totalCount = result.TotalCount
             });
         }
 
@@ -239,11 +218,6 @@ namespace BlogApi.Controllers
             }
 
             var updated = await _blogService.Update(id, title, desc, category, isActive, imagePath);
-
-            if (updated != null)
-            {
-                updated.UpdatedDate = DateTime.UtcNow;
-            }
 
             return Ok(updated);
         }

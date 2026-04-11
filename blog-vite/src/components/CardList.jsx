@@ -49,10 +49,16 @@ function CardList({
     }
   };
 
-  const filteredItems = items.filter((item) => {
+  const filteredItems = (items || []).filter((item) => {
     if (!item) return false;
     if (showSaved && !savedIds.includes(item.id)) return false;
-    if (search && !item.title?.toLowerCase().includes(search.toLowerCase()))
+   if (
+  search &&
+  !(
+    item.title?.toLowerCase().includes(search.toLowerCase()) ||
+    item.desc?.toLowerCase().includes(search.toLowerCase())
+  )
+)
       return false;
     return true;
   });

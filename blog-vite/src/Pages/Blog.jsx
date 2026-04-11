@@ -9,12 +9,15 @@ function Blog() {
   const [feedBlogs, setFeedBlogs] = useState([]);
   const [savedBlogIds, setSavedBlogIds] = useState([]);
 
+  const [savedBlogs, setSavedBlogs] = useState([]);
+  const [savedTotal, setSavedTotal] = useState(0);
+
   const [search, setSearch] = useState("");
   const [showSaved, setShowSaved] = useState(false);
 
-  // 🔥 Pagination states
   const [myBlogsPage, setMyBlogsPage] = useState(1);
   const [feedPage, setFeedPage] = useState(1);
+  const [savedPage, setSavedPage] = useState(1);
 
   const [myBlogsTotal, setMyBlogsTotal] = useState(0);
   const [feedTotal, setFeedTotal] = useState(0);
@@ -27,10 +30,8 @@ function Blog() {
 
   const isGuest = localStorage.getItem("userType") === "guest";
 
-  // ================= FETCH ================= //
-
   const fetchMyBlogs = async () => {
-    if (isGuest) return; // 🔥 guest skip
+    if (isGuest) return;
 
     try {
       const res = await axiosInstance.get(
@@ -46,9 +47,8 @@ function Blog() {
 
   const fetchFeed = async () => {
     try {
-      // ✅ Guest + User dono ke liye chalega
       const res = await axiosInstance.get(
-        `/blogs/feed?pageNumber=${feedPage}&pageSize=${pageSize}`
+        `/blogs/feed?pageNumber=${feedPage}&pageSize=${pageSize}&search=${search}`
       );
 
       setFeedBlogs(res.data?.data || []);
@@ -59,32 +59,43 @@ function Blog() {
   };
 
   const fetchSavedBlogs = async () => {
-    if (!currentUser || isGuest) return; // 🔥 guest skip
+    if (!currentUser || isGuest) return;
 
     try {
-      const res = await axiosInstance.get(`/savedblogs/${currentUser}`);
-      const ids = (res.data || []).map((id) => Number(id));
+      const res = await axiosInstance.get(
+        `/savedblogs?userId=${currentUser}&pageNumber=${savedPage}&pageSize=${pageSize}`
+      );
+
+      setSavedBlogs(res.data?.data || []);
+      setSavedTotal(res.data?.totalCount || 0);
+
+      const ids = (res.data?.data || []).map((b) => Number(b.id));
       setSavedBlogIds(ids);
     } catch (err) {
       console.error("Saved blogs error:", err.message);
     }
   };
 
-  // ================= USE EFFECT ================= //
-
   useEffect(() => {
     fetchMyBlogs();
   }, [myBlogsPage, isGuest]);
 
-  useEffect(() => {
-    fetchFeed();
-  }, [feedPage, isGuest]);
+  // ✅ FIRST: reset page when search changes
+useEffect(() => {
+  setFeedPage(1);
+  setFeedBlogs([]); // optional but recommended
+}, [search]);
+
+// ✅ SECOND: fetch data
+useEffect(() => {
+  fetchFeed();
+}, [feedPage, isGuest, search]);
 
   useEffect(() => {
-    fetchSavedBlogs();
-  }, [isGuest]);
-
-  // ================= SAVE / UNSAVE ================= //
+    if (showSaved) {
+      fetchSavedBlogs();
+    }
+  }, [savedPage, showSaved]);
 
   const saveBlog = async (blogId) => {
     if (!currentUser || isGuest) {
@@ -116,12 +127,12 @@ function Blog() {
       setSavedBlogIds((prev) =>
         prev.filter((id) => id !== Number(blogId))
       );
+
+      fetchSavedBlogs();
     } catch (err) {
       console.error("Unsave error:", err.message);
     }
   };
-
-  // ================= DELETE ================= //
 
   const deleteBlog = async (blogId) => {
     if (isGuest) return;
@@ -131,21 +142,15 @@ function Blog() {
 
       setMyBlogs((prev) => prev.filter((b) => b.id !== blogId));
       setFeedBlogs((prev) => prev.filter((b) => b.id !== blogId));
+      setSavedBlogs((prev) => prev.filter((b) => b.id !== blogId));
     } catch (err) {
       console.error("Delete error:", err.message);
     }
   };
 
-  // ================= FILTER ================= //
-
-  const mySavedBlogs = [...myBlogs, ...feedBlogs].filter((b) =>
-    savedBlogIds.includes(Number(b.id))
-  );
-
-  // ================= PAGINATION ================= //
-
   const myBlogsTotalPages = Math.ceil(myBlogsTotal / pageSize);
   const feedTotalPages = Math.ceil(feedTotal / pageSize);
+  const savedTotalPages = Math.ceil(savedTotal / pageSize);
 
   return (
     <div className="page-wrapper">
@@ -157,9 +162,8 @@ function Blog() {
 
       {!showSaved ? (
         <>
-          {/* 🧑 My Blogs */}
           {!isGuest && (
-            <section style={{ marginTop: "30px" }}>
+            <section style={{ marginTop: "30px", marginBottom: "40px" }}>
               <h2 className="section-title">My Blogs</h2>
 
               <CardList
@@ -172,16 +176,16 @@ function Blog() {
                 currentUser={currentUser}
               />
 
-              <div className="pagination-container">
+              <div className="pagination-container" style={{ textAlign: "right" }}>
                 <button
                   className="pagination-btn"
                   disabled={myBlogsPage === 1}
                   onClick={() => setMyBlogsPage(myBlogsPage - 1)}
                 >
-                  ◀ Previous
+                  Previous
                 </button>
 
-                <span className="pagination-info">
+                <span className="pagination-info" style={{ margin: "0 10px" }}>
                   Page {myBlogsPage} / {myBlogsTotalPages || 1}
                 </span>
 
@@ -190,17 +194,14 @@ function Blog() {
                   disabled={myBlogsPage === myBlogsTotalPages}
                   onClick={() => setMyBlogsPage(myBlogsPage + 1)}
                 >
-                  Next ▶
+                  Next
                 </button>
               </div>
             </section>
           )}
 
-          {/* 🌍 Feed */}
-          <section style={{ marginTop: "50px" }}>
+         <section style={{ marginTop: "50px", marginBottom: "40px" }}>
             <h2 className="section-title">My Feed</h2>
-
-            
 
             <CardList
               items={feedBlogs}
@@ -212,17 +213,16 @@ function Blog() {
               currentUser={currentUser}
             />
 
-            {/* ✅ FIX: Pagination guest ke liye bhi visible */}
-            <div className="pagination-container">
+            <div className="pagination-container" style={{ textAlign: "right" }}>
               <button
                 className="pagination-btn"
                 disabled={feedPage === 1}
                 onClick={() => setFeedPage(feedPage - 1)}
               >
-                ◀ Previous
+                Previous
               </button>
 
-              <span className="pagination-info">
+              <span className="pagination-info" style={{ margin: "0 10px" }}>
                 Page {feedPage} / {feedTotalPages || 1}
               </span>
 
@@ -231,17 +231,17 @@ function Blog() {
                 disabled={feedPage === feedTotalPages}
                 onClick={() => setFeedPage(feedPage + 1)}
               >
-                Next ▶
+                Next
               </button>
             </div>
           </section>
         </>
       ) : (
-        <section style={{ marginTop: "30px" }}>
+    <section style={{ marginTop: "30px", marginBottom: "40px" }}>
           <h2 className="section-title">My Saved Blogs</h2>
 
           <CardList
-            items={mySavedBlogs}
+            items={savedBlogs}
             search={search}
             showSaved={true}
             savedBlogIds={savedBlogIds}
@@ -250,6 +250,28 @@ function Blog() {
             deleteBlog={deleteBlog}
             currentUser={currentUser}
           />
+
+          <div className="pagination-container" style={{ textAlign: "right" }}>
+            <button
+              className="pagination-btn"
+              disabled={savedPage === 1}
+              onClick={() => setSavedPage(savedPage - 1)}
+            >
+              Previous
+            </button>
+
+            <span className="pagination-info" style={{ margin: "0 10px" }}>
+              Page {savedPage} / {savedTotalPages || 1}
+            </span>
+
+            <button
+              className="pagination-btn"
+              disabled={savedPage === savedTotalPages}
+              onClick={() => setSavedPage(savedPage + 1)}
+            >
+              Next
+            </button>
+          </div>
         </section>
       )}
     </div>
