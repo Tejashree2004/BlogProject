@@ -23,7 +23,7 @@ namespace Backend.Services
             {
                 var emailSettings = _config.GetSection("SMTP");
 
-                // ✅ Safe config reading
+                // ✅ Safe config reading (ENV > appsettings)
                 string senderEmail =
                     Environment.GetEnvironmentVariable("SMTP_EMAIL") ??
                     emailSettings["Email"] ??
@@ -34,12 +34,21 @@ namespace Backend.Services
                     emailSettings["Password"] ??
                     throw new Exception("SMTP Password not configured");
 
-                string smtpHost = emailSettings["Host"] ?? "smtp.gmail.com";
+                string smtpHost =
+                    Environment.GetEnvironmentVariable("SMTP_HOST") ??
+                    emailSettings["Host"] ??
+                    "smtp.gmail.com";
 
-                int smtpPort = 587;
+                int smtpPort =
+                    int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var port)
+                        ? port
+                        : 587;
+
                 var sslOption = SecureSocketOptions.StartTls;
 
-                // ✅ Create email
+                Console.WriteLine($"📧 Sending email to: {toEmail}");
+                Console.WriteLine($"🔧 SMTP Host: {smtpHost}");
+
                 var emailMessage = new MimeMessage();
                 emailMessage.From.Add(new MailboxAddress("Blog App", senderEmail));
                 emailMessage.To.Add(MailboxAddress.Parse(toEmail));
@@ -81,11 +90,19 @@ namespace Backend.Services
 
                 using var client = new SmtpClient();
 
-                // ✅ Timeout fix (important)
-                client.Timeout = 10000;
+                // ✅ Timeout
+                client.Timeout = 30000;
 
-                // ✅ Connect
-                await client.ConnectAsync(smtpHost, smtpPort, sslOption);
+                // 🔥 Safe connect with fallback
+                try
+                {
+                    await client.ConnectAsync(smtpHost, smtpPort, sslOption);
+                }
+                catch
+                {
+                    Console.WriteLine("⚠️ StartTls failed, trying Auto SSL...");
+                    await client.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.Auto);
+                }
 
                 // ✅ Authenticate
                 await client.AuthenticateAsync(senderEmail, senderPassword);
@@ -100,10 +117,14 @@ namespace Backend.Services
             }
             catch (Exception ex)
             {
-                // ❌ Don't crash API (IMPORTANT FIX)
                 Console.WriteLine("❌ Email send failed: " + ex.Message);
 
-                // OPTIONAL: comment below line if you don't want API to fail
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine("🔍 Inner Error: " + ex.InnerException.Message);
+                }
+
+                // ❌ API crash avoid
                 // throw;
             }
         }

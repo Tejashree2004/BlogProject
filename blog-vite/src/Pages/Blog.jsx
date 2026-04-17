@@ -30,72 +30,93 @@ function Blog() {
 
   const isGuest = localStorage.getItem("userType") === "guest";
 
+  // ================= MY BLOGS ================= //
   const fetchMyBlogs = async () => {
     if (isGuest) return;
 
     try {
-      const res = await axiosInstance.get(
-        `/blogs/myblogs?pageNumber=${myBlogsPage}&pageSize=${pageSize}`
-      );
+      let url = `/blogs/myblogs?pageNumber=${myBlogsPage}&pageSize=${pageSize}`;
+
+      if (search) {
+        url += `&search=${search}`;
+      }
+
+      const res = await axiosInstance.get(url);
 
       setMyBlogs(res.data?.data || []);
       setMyBlogsTotal(res.data?.totalCount || 0);
+
     } catch (err) {
       console.error("My blogs error:", err.message);
     }
   };
 
+  // ================= FEED ================= //
   const fetchFeed = async () => {
     try {
-      const res = await axiosInstance.get(
-        `/blogs/feed?pageNumber=${feedPage}&pageSize=${pageSize}&search=${search}`
-      );
+      let url = `/blogs/feed?pageNumber=${feedPage}&pageSize=${pageSize}`;
+
+      if (search) {
+        url += `&search=${search}`;
+      }
+
+      const res = await axiosInstance.get(url);
 
       setFeedBlogs(res.data?.data || []);
       setFeedTotal(res.data?.totalCount || 0);
+
     } catch (err) {
       console.error("Feed error:", err.message);
     }
   };
 
+  // ================= SAVED BLOGS ================= //
   const fetchSavedBlogs = async () => {
     if (!currentUser || isGuest) return;
 
     try {
-      const res = await axiosInstance.get(
-        `/savedblogs?userId=${currentUser}&pageNumber=${savedPage}&pageSize=${pageSize}`
-      );
+      let url = `/savedblogs?userId=${currentUser}&pageNumber=${savedPage}&pageSize=${pageSize}`;
+
+      if (search) {
+        url += `&search=${search}`;
+      }
+
+      const res = await axiosInstance.get(url);
 
       setSavedBlogs(res.data?.data || []);
       setSavedTotal(res.data?.totalCount || 0);
 
       const ids = (res.data?.data || []).map((b) => Number(b.id));
       setSavedBlogIds(ids);
+
     } catch (err) {
       console.error("Saved blogs error:", err.message);
     }
   };
 
+  // ================= EFFECTS ================= //
+
   useEffect(() => {
     fetchMyBlogs();
-  }, [myBlogsPage, isGuest]);
+  }, [myBlogsPage, isGuest, search]);
 
-  // ✅ FIRST: reset page when search changes
-useEffect(() => {
-  setFeedPage(1);
-  setFeedBlogs([]); // optional but recommended
-}, [search]);
-
-// ✅ SECOND: fetch data
-useEffect(() => {
-  fetchFeed();
-}, [feedPage, isGuest, search]);
+  useEffect(() => {
+    fetchFeed();
+  }, [feedPage, isGuest, search]);
 
   useEffect(() => {
     if (showSaved) {
       fetchSavedBlogs();
     }
-  }, [savedPage, showSaved]);
+  }, [savedPage, showSaved, search]);
+
+  useEffect(() => {
+    setFeedPage(1);
+    setMyBlogsPage(1);
+    setSavedPage(1);
+  }, [search]);
+
+  // ================= ACTIONS ================= //
 
   const saveBlog = async (blogId) => {
     if (!currentUser || isGuest) {
@@ -152,6 +173,11 @@ useEffect(() => {
   const feedTotalPages = Math.ceil(feedTotal / pageSize);
   const savedTotalPages = Math.ceil(savedTotal / pageSize);
 
+  // 🔥 NEW LOGIC
+  const showMyBlogsSection = !search || myBlogs.length > 0;
+  const showFeedSection = !search || feedBlogs.length > 0;
+  const showSavedSection = !search || savedBlogs.length > 0;
+
   return (
     <div className="page-wrapper">
       <Navbar
@@ -162,7 +188,7 @@ useEffect(() => {
 
       {!showSaved ? (
         <>
-          {!isGuest && (
+          {!isGuest && showMyBlogsSection && (
             <section style={{ marginTop: "30px", marginBottom: "40px" }}>
               <h2 className="section-title">My Blogs</h2>
 
@@ -200,12 +226,53 @@ useEffect(() => {
             </section>
           )}
 
-         <section style={{ marginTop: "50px", marginBottom: "40px" }}>
-            <h2 className="section-title">My Feed</h2>
+          {showFeedSection && (
+            <section style={{ marginTop: "50px", marginBottom: "40px" }}>
+              <h2 className="section-title">My Feed</h2>
+
+              <CardList
+                items={feedBlogs}
+                search={search}
+                savedBlogIds={savedBlogIds}
+                saveBlog={saveBlog}
+                unsaveBlog={unsaveBlog}
+                deleteBlog={deleteBlog}
+                currentUser={currentUser}
+              />
+
+              <div className="pagination-container" style={{ textAlign: "right" }}>
+                <button
+                  className="pagination-btn"
+                  disabled={feedPage === 1}
+                  onClick={() => setFeedPage(feedPage - 1)}
+                >
+                  Previous
+                </button>
+
+                <span className="pagination-info" style={{ margin: "0 10px" }}>
+                  Page {feedPage} / {feedTotalPages || 1}
+                </span>
+
+                <button
+                  className="pagination-btn"
+                  disabled={feedPage === feedTotalPages}
+                  onClick={() => setFeedPage(feedPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        showSavedSection && (
+          <section style={{ marginTop: "30px", marginBottom: "40px" }}>
+            <h2 className="section-title">My Saved Blogs</h2>
 
             <CardList
-              items={feedBlogs}
+              items={savedBlogs}
               search={search}
+              showSaved={true}
               savedBlogIds={savedBlogIds}
               saveBlog={saveBlog}
               unsaveBlog={unsaveBlog}
@@ -216,63 +283,26 @@ useEffect(() => {
             <div className="pagination-container" style={{ textAlign: "right" }}>
               <button
                 className="pagination-btn"
-                disabled={feedPage === 1}
-                onClick={() => setFeedPage(feedPage - 1)}
+                disabled={savedPage === 1}
+                onClick={() => setSavedPage(savedPage - 1)}
               >
                 Previous
               </button>
 
               <span className="pagination-info" style={{ margin: "0 10px" }}>
-                Page {feedPage} / {feedTotalPages || 1}
+                Page {savedPage} / {savedTotalPages || 1}
               </span>
 
               <button
                 className="pagination-btn"
-                disabled={feedPage === feedTotalPages}
-                onClick={() => setFeedPage(feedPage + 1)}
+                disabled={savedPage === savedTotalPages}
+                onClick={() => setSavedPage(savedPage + 1)}
               >
                 Next
               </button>
             </div>
           </section>
-        </>
-      ) : (
-    <section style={{ marginTop: "30px", marginBottom: "40px" }}>
-          <h2 className="section-title">My Saved Blogs</h2>
-
-          <CardList
-            items={savedBlogs}
-            search={search}
-            showSaved={true}
-            savedBlogIds={savedBlogIds}
-            saveBlog={saveBlog}
-            unsaveBlog={unsaveBlog}
-            deleteBlog={deleteBlog}
-            currentUser={currentUser}
-          />
-
-          <div className="pagination-container" style={{ textAlign: "right" }}>
-            <button
-              className="pagination-btn"
-              disabled={savedPage === 1}
-              onClick={() => setSavedPage(savedPage - 1)}
-            >
-              Previous
-            </button>
-
-            <span className="pagination-info" style={{ margin: "0 10px" }}>
-              Page {savedPage} / {savedTotalPages || 1}
-            </span>
-
-            <button
-              className="pagination-btn"
-              disabled={savedPage === savedTotalPages}
-              onClick={() => setSavedPage(savedPage + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </section>
+        )
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 using BlogApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace BlogApi.Controllers
 {
@@ -14,7 +15,8 @@ namespace BlogApi.Controllers
             _service = service;
         }
 
-        // ✅ GET: /api/savedblogs/{userId}
+        // ================= GET SAVED IDS ================= //
+        // GET: /api/savedblogs/{userId}
         [HttpGet("{userId}")]
         public IActionResult GetSaved(string userId)
         {
@@ -25,19 +27,26 @@ namespace BlogApi.Controllers
             return Ok(savedIds);
         }
 
-        // 🔥 FIXED: PAGINATED SAVED BLOGS (ASYNC)
-        // GET: /api/savedblogs?userId=xyz&pageNumber=1&pageSize=10
+        // ================= GET SAVED BLOGS (PAGINATED + SEARCH) ================= //
+        // GET: /api/savedblogs?userId=xyz&pageNumber=1&pageSize=10&search=abc
         [HttpGet]
         public async Task<IActionResult> GetSavedPaginated(
             [FromQuery] string userId,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = ""
+        )
         {
-            if (string.IsNullOrEmpty(userId))
+            if (string.IsNullOrWhiteSpace(userId))
                 return BadRequest("UserId required");
 
-            // ✅ FIX: await lagaya
-            var result = await _service.GetSavedBlogsPaginated(userId, pageNumber, pageSize);
+            // 🔥 MAIN FIX → search + pagination handled in service
+            var result = await _service.GetSavedBlogsPaginated(
+                userId,
+                pageNumber,
+                pageSize,
+                search
+            );
 
             return Ok(new
             {
@@ -46,30 +55,40 @@ namespace BlogApi.Controllers
             });
         }
 
-        // ✅ POST: /api/savedblogs/save
+        // ================= SAVE BLOG ================= //
+        // POST: /api/savedblogs/save
         [HttpPost("save")]
         public IActionResult Save([FromBody] SaveRequest request)
         {
-            if (string.IsNullOrEmpty(request.UserId))
+            if (request == null || string.IsNullOrWhiteSpace(request.UserId))
                 return BadRequest("UserId required");
 
             _service.SaveBlog(request.UserId, request.BlogId);
-            return Ok(new { message = "Blog saved successfully" });
+
+            return Ok(new
+            {
+                message = "Blog saved successfully"
+            });
         }
 
-        // ✅ POST: /api/savedblogs/unsave
+        // ================= UNSAVE BLOG ================= //
+        // POST: /api/savedblogs/unsave
         [HttpPost("unsave")]
         public IActionResult Unsave([FromBody] SaveRequest request)
         {
-            if (string.IsNullOrEmpty(request.UserId))
+            if (request == null || string.IsNullOrWhiteSpace(request.UserId))
                 return BadRequest("UserId required");
 
             _service.UnsaveBlog(request.UserId, request.BlogId);
-            return Ok(new { message = "Blog unsaved successfully" });
+
+            return Ok(new
+            {
+                message = "Blog unsaved successfully"
+            });
         }
     }
 
-    // ✅ Request model
+    // ================= REQUEST MODEL ================= //
     public class SaveRequest
     {
         public string UserId { get; set; } = string.Empty;

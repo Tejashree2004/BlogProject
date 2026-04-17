@@ -1052,22 +1052,20 @@ body {
 
 }
 }
-
-
 .pagination-container {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 16px;
+  gap: 6px; /* 🔥 spacing kam kiya */
 
-  margin-top: 10px;     /* 🔥 reduced */
-  margin-bottom: 20px;
+  margin-top: 10px;
+  margin-bottom: 50px; /* 🔥 bottom se proper space */
 
   padding-right: 20px;
 }
 
 .pagination-btn {
-  padding: 6px 14px;
+  padding: 5px 10px; /* 🔥 compact */
   border-radius: 6px;
   border: 1px solid #374151;
   background-color: transparent;
@@ -1089,4 +1087,8 @@ body {
 .pagination-info {
   font-size: 13px;
   color: #9ca3af;
+  margin: 0 4px; /* 🔥 page text ko bhi close kiya */
+}
+.page-wrapper {
+  padding-bottom: 20px; /* 🔥 full page bottom breathing space */
 }

@@ -13,15 +13,19 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     try {
-      const token = localStorage.getItem("jwtToken");
+      // 🔥 FIX: support multiple token keys (SAFE)
+      const token =
+        localStorage.getItem("jwtToken") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("accessToken");
 
       console.log("Token being sent:", token);
 
-      // ✅ Only attach if token exists
+      // ✅ Only attach if valid token exists
       if (token && token !== "null" && token !== "undefined") {
         config.headers.Authorization = `Bearer ${token}`;
       } else {
-        delete config.headers.Authorization; // 🔥 prevents sending invalid header
+        delete config.headers.Authorization; // prevent invalid header
       }
     } catch (err) {
       console.error("Token read error:", err);
@@ -69,7 +73,10 @@ axiosInstance.interceptors.response.use(
 
       // ✅ Don't redirect guest users
       if (!isGuest) {
-        localStorage.removeItem("jwtToken"); // 🔥 safer than clear()
+        // 🔥 safer removal (remove all possible token keys)
+        localStorage.removeItem("jwtToken");
+        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
 
         if (!window.location.pathname.includes("/login")) {
           window.location.href = "/login";

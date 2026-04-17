@@ -96,11 +96,13 @@ namespace BlogApi.Services
                 : new List<int>();
         }
 
-        // 🔥🔥🔥 FINAL OPTIMIZED METHOD
+        // ================= 🔥 FIXED SAVED BLOGS =================
         public async Task<(List<Blog> Blogs, int TotalCount)> GetSavedBlogsPaginated(
             string userId,
             int pageNumber,
-            int pageSize)
+            int pageSize,
+            string? search = ""
+        )
         {
             if (string.IsNullOrWhiteSpace(userId))
                 return (new List<Blog>(), 0);
@@ -111,11 +113,25 @@ namespace BlogApi.Services
                 return (new List<Blog>(), 0);
 
             var query = _context.Blogs
-                .Where(b => b.IsActive && savedIds.Contains(b.Id))
-                .OrderByDescending(b => b.CreatedDate);
+                .Where(b => b.IsActive && savedIds.Contains(b.Id));
+
+            // 🔍 SEARCH APPLY
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+
+                query = query.Where(b =>
+                    (b.Title != null && b.Title.ToLower().Contains(lowerSearch)) ||
+                    (b.Desc != null && b.Desc.ToLower().Contains(lowerSearch))
+                );
+            }
+
+            // ✅ SORT (same as before)
+            query = query.OrderByDescending(b => b.CreatedDate);
 
             var totalCount = await query.CountAsync();
 
+            // 🔥 IMPORTANT FIX: ALWAYS APPLY PAGINATION (even in search)
             var blogs = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

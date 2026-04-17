@@ -23,21 +23,18 @@ namespace BlogApi.Services
 
         public async Task<List<Blog>> GetAll()
         {
-            return await _context.Blogs
-                .Where(b => b.IsActive)
-                .ToListAsync();
+            return await BaseQuery().ToListAsync();
         }
 
         public async Task<Blog?> GetById(int id)
         {
-            return await _context.Blogs
-                .FirstOrDefaultAsync(b => b.Id == id && b.IsActive);
+            return await BaseQuery()
+                .FirstOrDefaultAsync(b => b.Id == id);
         }
 
-        // 🔥 NEW: Queryable (IMPORTANT FOR SEARCH FIX)
         public IQueryable<Blog> GetQueryable()
         {
-            return _context.Blogs.Where(b => b.IsActive);
+            return BaseQuery();
         }
 
         // ================= CREATE ================= //
@@ -124,13 +121,26 @@ namespace BlogApi.Services
             return true;
         }
 
-        // ================= PAGINATION ================= //
+        // ================= PAGINATION (COMMON LOGIC) ================= //
 
-        public async Task<(List<Blog> Data, int TotalCount)> GetPaginated(int pageNumber, int pageSize)
+        public async Task<(List<Blog> Data, int TotalCount)> GetPaginated(
+            int pageNumber,
+            int pageSize,
+            string? search = ""
+        )
         {
-            var query = _context.Blogs
-                .Where(b => b.IsActive)
-                .OrderByDescending(b => b.CreatedDate);
+            var query = BaseQuery();
+
+            // 🔥 SEARCH APPLY
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+
+                query = query.Where(b =>
+                    (b.Title != null && b.Title.ToLower().Contains(lowerSearch)) ||
+                    (b.Desc != null && b.Desc.ToLower().Contains(lowerSearch))
+                );
+            }
 
             var totalCount = await query.CountAsync();
 
@@ -145,11 +155,23 @@ namespace BlogApi.Services
         public async Task<(List<Blog> Data, int TotalCount)> GetMyBlogsPaginated(
             string username,
             int pageNumber,
-            int pageSize)
+            int pageSize,
+            string? search = ""
+        )
         {
-            var query = _context.Blogs
-                .Where(b => b.IsActive && b.Author == username)
-                .OrderByDescending(b => b.CreatedDate);
+            var query = BaseQuery()
+                .Where(b => b.Author == username);
+
+            // 🔥 SEARCH APPLY
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+
+                query = query.Where(b =>
+                    (b.Title != null && b.Title.ToLower().Contains(lowerSearch)) ||
+                    (b.Desc != null && b.Desc.ToLower().Contains(lowerSearch))
+                );
+            }
 
             var totalCount = await query.CountAsync();
 
@@ -161,8 +183,6 @@ namespace BlogApi.Services
             return (data, totalCount);
         }
 
-        // ================= 🔥 FINAL FEED (SEARCH FIXED) ================= //
-
         public async Task<(List<Blog> Data, int TotalCount)> GetFeedPaginated(
             string? username,
             int pageNumber,
@@ -170,16 +190,15 @@ namespace BlogApi.Services
             string? search = ""
         )
         {
-            var query = _context.Blogs
-                .Where(b => b.IsActive);
+            var query = BaseQuery();
 
-            // 🔥 Exclude current user blogs
+            // exclude own blogs
             if (!string.IsNullOrEmpty(username))
             {
                 query = query.Where(b => b.Author != username);
             }
 
-            // 🔥 GLOBAL SEARCH (BEFORE PAGINATION)
+            // 🔥 SEARCH APPLY
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var lowerSearch = search.ToLower();
@@ -190,19 +209,23 @@ namespace BlogApi.Services
                 );
             }
 
-            // 🔥 SORTING
-            query = query.OrderByDescending(b => b.CreatedDate);
-
-            // 🔥 TOTAL COUNT AFTER SEARCH
             var totalCount = await query.CountAsync();
 
-            // 🔥 PAGINATION
             var data = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
             return (data, totalCount);
+        }
+
+        // ================= COMMON BASE QUERY ================= //
+
+        private IQueryable<Blog> BaseQuery()
+        {
+            return _context.Blogs
+                .Where(b => b.IsActive)
+                .OrderByDescending(b => b.CreatedDate);
         }
     }
 }

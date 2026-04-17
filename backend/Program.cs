@@ -8,9 +8,10 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using BlogApi.Data;
 using BlogApi.Models;
+using DotNetEnv;
 
 // 🔥 Load .env variables
-DotNetEnv.Env.Load();
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,7 +77,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ================= SMTP CONFIG (SAFE) ================= //
+// ================= SMTP CHECK ================= //
 var smtpEmail = Environment.GetEnvironmentVariable("SMTP_EMAIL");
 var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 
@@ -84,6 +85,10 @@ if (string.IsNullOrWhiteSpace(smtpEmail) ||
     string.IsNullOrWhiteSpace(smtpPassword))
 {
     Console.WriteLine("⚠ SMTP credentials missing - Email feature will NOT work properly");
+}
+else
+{
+    Console.WriteLine("✅ SMTP configured successfully");
 }
 
 // ================= SERVICES ================= //
@@ -102,7 +107,6 @@ using (var scope = app.Services.CreateScope())
 
     context.Database.Migrate();
 
-    // ===== BLOG SEED ===== //
     if (!context.Blogs.Any())
     {
         context.Blogs.AddRange(new List<Blog>
@@ -142,7 +146,6 @@ using (var scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 
-    // ===== USER SEED ===== //
     if (!context.Users.Any())
     {
         context.Users.Add(new User

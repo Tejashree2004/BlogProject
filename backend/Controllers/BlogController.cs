@@ -51,12 +51,22 @@ namespace BlogApi.Controllers
 
         [Authorize]
         [HttpGet("myblogs")]
-        public async Task<IActionResult> GetMyBlogs(int pageNumber = 1, int pageSize = 10)
+        public async Task<IActionResult> GetMyBlogs(
+            int pageNumber = 1,
+            int pageSize = 10,
+            string? search = ""
+        )
         {
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
 
-            var result = await _blogService.GetMyBlogsPaginated(username, pageNumber, pageSize);
+            // ✅ SAME METHOD → search + pagination handled in service
+            var result = await _blogService.GetMyBlogsPaginated(
+                username,
+                pageNumber,
+                pageSize,
+                search
+            );
 
             return Ok(new
             {
@@ -77,6 +87,7 @@ namespace BlogApi.Controllers
         {
             var username = GetUsernameFromToken();
 
+            // ✅ NO special search block
             var result = await _blogService.GetFeedPaginated(
                 username,
                 pageNumber,
