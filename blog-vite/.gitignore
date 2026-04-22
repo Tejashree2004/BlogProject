@@ -48,6 +48,5 @@ obj/
 # 🔹 Visual Studio
 # =========================
 .vs/
-*.sln
 *.ntvs*
 *.njsproj
