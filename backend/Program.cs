@@ -8,9 +8,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using BlogApi.Data;
 using BlogApi.Models;
-// using DotNetEnv; ❌ Not needed on Railway
-
-// ❌ Env.Load();  // disable for Railway
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -176,12 +173,9 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ================= SWAGGER ================= //
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// ================= SWAGGER (FIXED FOR PRODUCTION) ================= //
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 
