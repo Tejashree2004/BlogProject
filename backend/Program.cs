@@ -8,10 +8,9 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using BlogApi.Data;
 using BlogApi.Models;
-using DotNetEnv;
+// using DotNetEnv; ❌ Not needed on Railway
 
-// 🔥 Load .env variables
-Env.Load();
+// ❌ Env.Load();  // disable for Railway
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +26,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -48,7 +47,7 @@ if (string.IsNullOrWhiteSpace(keyString) ||
     string.IsNullOrWhiteSpace(issuer) ||
     string.IsNullOrWhiteSpace(audience))
 {
-    throw new InvalidOperationException("JWT configuration missing in appsettings.json");
+    throw new InvalidOperationException("JWT configuration missing");
 }
 
 var key = Encoding.ASCII.GetBytes(keyString);
@@ -84,11 +83,11 @@ var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 if (string.IsNullOrWhiteSpace(smtpEmail) ||
     string.IsNullOrWhiteSpace(smtpPassword))
 {
-    Console.WriteLine("⚠ SMTP credentials missing - Email feature will NOT work properly");
+    Console.WriteLine("⚠ SMTP not configured");
 }
 else
 {
-    Console.WriteLine("✅ SMTP configured successfully");
+    Console.WriteLine("✅ SMTP configured");
 }
 
 // ================= SERVICES ================= //
@@ -100,65 +99,72 @@ builder.Services.AddScoped<JwtHelper>();
 
 var app = builder.Build();
 
-// ================= SEED DATA ================= //
+// ================= SEED + MIGRATION SAFE ================= //
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    context.Database.Migrate();
-
-    if (!context.Blogs.Any())
+    try
     {
-        context.Blogs.AddRange(new List<Blog>
-        {
-            new Blog
-            {
-                Title = "AI in 2026",
-                Desc = "AI is growing rapidly...",
-                Image = "https://picsum.photos/300/200?1",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            },
-            new Blog
-            {
-                Title = "React UI Design",
-                Desc = "Reusable components",
-                Image = "https://picsum.photos/300/200?2",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            },
-            new Blog
-            {
-                Title = "JavaScript Tips",
-                Desc = "JS fundamentals",
-                Image = "https://picsum.photos/300/200?3",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            }
-        });
+        context.Database.Migrate();
 
-        context.SaveChanges();
+        if (!context.Blogs.Any())
+        {
+            context.Blogs.AddRange(new List<Blog>
+            {
+                new Blog
+                {
+                    Title = "AI in 2026",
+                    Desc = "AI is growing rapidly...",
+                    Image = "https://picsum.photos/300/200?1",
+                    Category = "blog",
+                    IsUserCreated = false,
+                    Author = "",
+                    IsActive = true
+                },
+                new Blog
+                {
+                    Title = "React UI Design",
+                    Desc = "Reusable components",
+                    Image = "https://picsum.photos/300/200?2",
+                    Category = "blog",
+                    IsUserCreated = false,
+                    Author = "",
+                    IsActive = true
+                },
+                new Blog
+                {
+                    Title = "JavaScript Tips",
+                    Desc = "JS fundamentals",
+                    Image = "https://picsum.photos/300/200?3",
+                    Category = "blog",
+                    IsUserCreated = false,
+                    Author = "",
+                    IsActive = true
+                }
+            });
+
+            context.SaveChanges();
+        }
+
+        if (!context.Users.Any())
+        {
+            context.Users.Add(new User
+            {
+                Username = "testuser",
+                Email = "test@gmail.com",
+                Password = "12345678",
+                IsGuest = false,
+                CreatedDate = DateTime.UtcNow,
+                IsVerified = true
+            });
+
+            context.SaveChanges();
+        }
     }
-
-    if (!context.Users.Any())
+    catch (Exception ex)
     {
-        context.Users.Add(new User
-        {
-            Username = "testuser",
-            Email = "test@gmail.com",
-            Password = "12345678",
-            IsGuest = false,
-            CreatedDate = DateTime.UtcNow,
-            IsVerified = true
-        });
-
-        context.SaveChanges();
+        Console.WriteLine("Migration/Seeding failed: " + ex.Message);
     }
 }
 
