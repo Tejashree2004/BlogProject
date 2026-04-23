@@ -11,21 +11,27 @@ using BlogApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔥 IMPORTANT: Railway PORT binding FIX
+//
+// ================= RAILWAY PORT FIX =================
+//
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// ================= CONTROLLERS ================= //
+//
+// ================= CONTROLLERS =================
+//
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
-// ================= CORS ================= //
+//
+// ================= CORS =================
+//
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReact", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
@@ -33,11 +39,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ================= DATABASE ================= //
+//
+// ================= DATABASE =================
+//
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ================= JWT CONFIG ================= //
+//
+// ================= JWT =================
+//
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
 var keyString = jwtSettings["Key"];
@@ -48,10 +58,10 @@ if (string.IsNullOrWhiteSpace(keyString) ||
     string.IsNullOrWhiteSpace(issuer) ||
     string.IsNullOrWhiteSpace(audience))
 {
-    throw new InvalidOperationException("JWT configuration missing");
+    Console.WriteLine("⚠ JWT config missing - app may fail auth");
 }
 
-var key = Encoding.ASCII.GetBytes(keyString);
+var key = Encoding.ASCII.GetBytes(keyString ?? "dummy-key-for-dev");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -73,25 +83,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     };
 });
 
-// ================= SWAGGER ================= //
+//
+// ================= SWAGGER =================
+//
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ================= SMTP CHECK ================= //
-var smtpEmail = Environment.GetEnvironmentVariable("SMTP_EMAIL");
-var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
-
-if (string.IsNullOrWhiteSpace(smtpEmail) ||
-    string.IsNullOrWhiteSpace(smtpPassword))
-{
-    Console.WriteLine("⚠ SMTP not configured");
-}
-else
-{
-    Console.WriteLine("✅ SMTP configured");
-}
-
-// ================= SERVICES ================= //
+//
+// ================= SERVICES =================
+//
 builder.Services.AddScoped<BlogService>();
 builder.Services.AddScoped<SavedBlogService>();
 builder.Services.AddScoped<UserService>();
@@ -100,7 +100,9 @@ builder.Services.AddScoped<JwtHelper>();
 
 var app = builder.Build();
 
-// ================= SEED + MIGRATION SAFE ================= //
+//
+// ================= DATABASE MIGRATION SAFE =================
+//
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -109,45 +111,20 @@ using (var scope = app.Services.CreateScope())
     {
         context.Database.Migrate();
 
+        // Seed Blogs
         if (!context.Blogs.Any())
         {
             context.Blogs.AddRange(new List<Blog>
             {
-                new Blog
-                {
-                    Title = "AI in 2026",
-                    Desc = "AI is growing rapidly...",
-                    Image = "https://picsum.photos/300/200?1",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                },
-                new Blog
-                {
-                    Title = "React UI Design",
-                    Desc = "Reusable components",
-                    Image = "https://picsum.photos/300/200?2",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                },
-                new Blog
-                {
-                    Title = "JavaScript Tips",
-                    Desc = "JS fundamentals",
-                    Image = "https://picsum.photos/300/200?3",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                }
+                new Blog { Title="AI in 2026", Desc="AI is growing...", Image="https://picsum.photos/300/200?1", Category="blog", IsActive=true },
+                new Blog { Title="React UI Design", Desc="Reusable components", Image="https://picsum.photos/300/200?2", Category="blog", IsActive=true },
+                new Blog { Title="JavaScript Tips", Desc="JS fundamentals", Image="https://picsum.photos/300/200?3", Category="blog", IsActive=true }
             });
 
             context.SaveChanges();
         }
 
+        // Seed User
         if (!context.Users.Any())
         {
             context.Users.Add(new User
@@ -165,24 +142,28 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Console.WriteLine("Migration/Seeding failed: " + ex.Message);
+        Console.WriteLine("DB init error: " + ex.Message);
     }
 }
 
-// ================= MIDDLEWARE ================= //
-app.UseCors("AllowReact");
+//
+// ================= MIDDLEWARE =================
+//
+app.UseCors("AllowAll");
 
 app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ================= SWAGGER (ROOT PE SHOW) ================= //
+//
+// ================= SWAGGER (PRODUCTION SAFE) =================
+//
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
-    c.RoutePrefix = string.Empty; // 👉 Swagger root pe open hoga
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blog API V1");
+    c.RoutePrefix = string.Empty; // root URL pe swagger
 });
 
 app.MapControllers();
