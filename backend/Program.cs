@@ -11,6 +11,10 @@ using BlogApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 🔥 IMPORTANT: Railway PORT binding FIX
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // ================= CONTROLLERS ================= //
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -173,9 +177,13 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ================= SWAGGER (FIXED FOR PRODUCTION) ================= //
+// ================= SWAGGER (ROOT PE SHOW) ================= //
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
+    c.RoutePrefix = string.Empty; // 👉 Swagger root pe open hoga
+});
 
 app.MapControllers();
 
