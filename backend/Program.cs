@@ -54,14 +54,12 @@ var keyString = jwtSettings["Key"];
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 
-if (string.IsNullOrWhiteSpace(keyString) ||
-    string.IsNullOrWhiteSpace(issuer) ||
-    string.IsNullOrWhiteSpace(audience))
+if (string.IsNullOrWhiteSpace(keyString))
 {
-    Console.WriteLine("⚠ JWT config missing - app may fail auth");
+    keyString = "fallback-dev-key";
 }
 
-var key = Encoding.ASCII.GetBytes(keyString ?? "dummy-key-for-dev");
+var key = Encoding.ASCII.GetBytes(keyString);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -71,13 +69,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateIssuerSigningKey = true,
         ValidateLifetime = true,
 
-        ValidIssuer = issuer,
-        ValidAudience = audience,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ClockSkew = TimeSpan.Zero
     };
@@ -157,13 +153,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 //
-// ================= SWAGGER (PRODUCTION SAFE) =================
+// ================= SWAGGER =================
 //
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blog API V1");
-    c.RoutePrefix = string.Empty; // root URL pe swagger
+    c.RoutePrefix = string.Empty;
 });
 
 app.MapControllers();
