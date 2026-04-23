@@ -8,67 +8,48 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using BlogApi.Data;
 using BlogApi.Models;
+using DotNetEnv;
+
+// 🔥 Load .env variables
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-//
-// ================= RAILWAY PORT FIX (DO NOT REMOVE) =================
-//
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-
-//
-// ================= CONTROLLERS =================
-//
+// ================= CONTROLLERS ================= //
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
-//
-// ================= CORS (PRODUCTION SAFE) =================
-//
+// ================= CORS ================= //
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
-//
-// ================= DATABASE =================
-//
+// ================= DATABASE ================= //
 builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-    options.UseNpgsql(conn, npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure();
-    });
-});
-
-//
-// ================= JWT CONFIG =================
-//
+// ================= JWT CONFIG ================= //
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 
 var keyString = jwtSettings["Key"];
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 
-if (string.IsNullOrWhiteSpace(keyString))
-    keyString = "dev-key-123456789";
-
-if (string.IsNullOrWhiteSpace(issuer))
-    issuer = "BlogApi";
-
-if (string.IsNullOrWhiteSpace(audience))
-    audience = "BlogUsers";
+if (string.IsNullOrWhiteSpace(keyString) ||
+    string.IsNullOrWhiteSpace(issuer) ||
+    string.IsNullOrWhiteSpace(audience))
+{
+    throw new InvalidOperationException("JWT configuration missing in appsettings.json");
+}
 
 var key = Encoding.ASCII.GetBytes(keyString);
 
@@ -92,15 +73,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     };
 });
 
-//
-// ================= SWAGGER =================
-//
+// ================= SWAGGER ================= //
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-//
-// ================= SERVICES =================
-//
+// ================= SMTP CHECK ================= //
+var smtpEmail = Environment.GetEnvironmentVariable("SMTP_EMAIL");
+var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+
+if (string.IsNullOrWhiteSpace(smtpEmail) ||
+    string.IsNullOrWhiteSpace(smtpPassword))
+{
+    Console.WriteLine("⚠ SMTP credentials missing - Email feature will NOT work properly");
+}
+else
+{
+    Console.WriteLine("✅ SMTP configured successfully");
+}
+
+// ================= SERVICES ================= //
 builder.Services.AddScoped<BlogService>();
 builder.Services.AddScoped<SavedBlogService>();
 builder.Services.AddScoped<UserService>();
@@ -109,80 +100,69 @@ builder.Services.AddScoped<JwtHelper>();
 
 var app = builder.Build();
 
-//
-// ================= DATABASE SAFE MIGRATION =================
-//
+// ================= SEED DATA ================= //
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    try
+    context.Database.Migrate();
+
+    if (!context.Blogs.Any())
     {
-        context.Database.Migrate();
-
-        if (!context.Blogs.Any())
+        context.Blogs.AddRange(new List<Blog>
         {
-            context.Blogs.AddRange(new List<Blog>
+            new Blog
             {
-                new Blog
-                {
-                    Title = "AI in 2026",
-                    Desc = "AI is growing rapidly...",
-                    Image = "https://picsum.photos/300/200?1",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                },
-                new Blog
-                {
-                    Title = "React UI Design",
-                    Desc = "Reusable components",
-                    Image = "https://picsum.photos/300/200?2",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                },
-                new Blog
-                {
-                    Title = "JavaScript Tips",
-                    Desc = "JS fundamentals",
-                    Image = "https://picsum.photos/300/200?3",
-                    Category = "blog",
-                    IsUserCreated = false,
-                    Author = "",
-                    IsActive = true
-                }
-            });
-
-            context.SaveChanges();
-        }
-
-        if (!context.Users.Any())
-        {
-            context.Users.Add(new User
+                Title = "AI in 2026",
+                Desc = "AI is growing rapidly...",
+                Image = "https://picsum.photos/300/200?1",
+                Category = "blog",
+                IsUserCreated = false,
+                Author = "",
+                IsActive = true
+            },
+            new Blog
             {
-                Username = "testuser",
-                Email = "test@gmail.com",
-                Password = "12345678",
-                IsGuest = false,
-                CreatedDate = DateTime.UtcNow,
-                IsVerified = true
-            });
+                Title = "React UI Design",
+                Desc = "Reusable components",
+                Image = "https://picsum.photos/300/200?2",
+                Category = "blog",
+                IsUserCreated = false,
+                Author = "",
+                IsActive = true
+            },
+            new Blog
+            {
+                Title = "JavaScript Tips",
+                Desc = "JS fundamentals",
+                Image = "https://picsum.photos/300/200?3",
+                Category = "blog",
+                IsUserCreated = false,
+                Author = "",
+                IsActive = true
+            }
+        });
 
-            context.SaveChanges();
-        }
+        context.SaveChanges();
     }
-    catch (Exception ex)
+
+    if (!context.Users.Any())
     {
-        Console.WriteLine("DB INIT ERROR: " + ex.Message);
+        context.Users.Add(new User
+        {
+            Username = "testuser",
+            Email = "test@gmail.com",
+            Password = "12345678",
+            IsGuest = false,
+            CreatedDate = DateTime.UtcNow,
+            IsVerified = true
+        });
+
+        context.SaveChanges();
     }
 }
 
-//
-// ================= MIDDLEWARE =================
-//
+// ================= MIDDLEWARE ================= //
 app.UseCors("AllowReact");
 
 app.UseStaticFiles();
@@ -190,15 +170,12 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-//
-// ================= SWAGGER =================
-//
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// ================= SWAGGER ================= //
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blog API V1");
-    c.RoutePrefix = string.Empty;
-});
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.MapControllers();
 
