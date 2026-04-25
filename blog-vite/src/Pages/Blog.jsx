@@ -118,11 +118,10 @@ function Blog() {
 
   // ================= ACTIONS ================= //
 
-  const saveBlog = async (blogId) => {
-    if (!currentUser || isGuest) {
-      alert("Login required to save blogs");
-      return;
-    }
+ const saveBlog = async (blogId) => {
+  if (!currentUser || isGuest) {
+    return; // popup already handled in CardList
+  }
 
     try {
       await axiosInstance.post("/savedblogs/save", {

@@ -63,8 +63,8 @@ function App() {
   };
 
   // ===================== SAVE BLOG ===================== //
-  const saveBlog = async (blogId) => {
-    if (!token) return alert("Login required!");
+ const saveBlog = async (blogId) => {
+  if (!token) return; // popup already handled in UI
 
     try {
       await axiosInstance.post(`/blogs/save/${blogId}`);
