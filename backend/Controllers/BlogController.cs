@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using BlogApi.Models;
 using BlogApi.Services;
-using System.Linq;
 using System.IO;
 using System;
 using System.Threading.Tasks;
@@ -60,7 +59,6 @@ namespace BlogApi.Controllers
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
 
-            // ✅ SAME METHOD → search + pagination handled in service
             var result = await _blogService.GetMyBlogsPaginated(
                 username,
                 pageNumber,
@@ -87,7 +85,6 @@ namespace BlogApi.Controllers
         {
             var username = GetUsernameFromToken();
 
-            // ✅ NO special search block
             var result = await _blogService.GetFeedPaginated(
                 username,
                 pageNumber,
@@ -146,13 +143,14 @@ namespace BlogApi.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> Create(
-            [FromForm] string title,
-            [FromForm] string desc,
-            [FromForm] string category,
-            [FromForm] bool isActive,
-            [FromForm] IFormFile? image
-        )
+        [Consumes("multipart/form-data")]   // ✅ FIXED SWAGGER
+      public async Task<IActionResult> Create(
+    [FromForm] string title,
+    [FromForm] string desc,
+    [FromForm] string category,
+    [FromForm] bool isActive,
+    IFormFile? image   // ❌ FromForm REMOVE karo
+)
         {
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
@@ -193,14 +191,15 @@ namespace BlogApi.Controllers
 
         [Authorize]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(
-            int id,
-            [FromForm] string title,
-            [FromForm] string desc,
-            [FromForm] string category,
-            [FromForm] bool isActive,
-            [FromForm] IFormFile? image
-        )
+        [Consumes("multipart/form-data")]   // ✅ FIXED SWAGGER
+    public async Task<IActionResult> Update(
+    int id,
+    [FromForm] string title,
+    [FromForm] string desc,
+    [FromForm] string category,
+    [FromForm] bool isActive,
+    IFormFile? image   // ❌ FromForm REMOVE
+)
         {
             var username = GetUsernameFromToken();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
