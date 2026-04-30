@@ -10,10 +10,17 @@ using BlogApi.Data;
 using BlogApi.Models;
 using DotNetEnv;
 
-// 🔥 Load .env variables
+// 🔥 Load .env variables (local only)
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 🔥 FIX FOR RAILWAY PORT (SAFE FOR LOCAL)
+if (builder.Environment.IsProduction())
+{
+    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 // ================= CONTROLLERS ================= //
 builder.Services.AddControllers()
@@ -27,15 +34,23 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:5173",
+            "https://blogproject-production-b3e1.up.railway.app"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
 // ================= DATABASE ================= //
+
+// 🔥 Railway DATABASE_URL OR local appsettings
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // ================= JWT CONFIG ================= //
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -84,11 +99,11 @@ var smtpPassword = Environment.GetEnvironmentVariable("SMTP_PASSWORD");
 if (string.IsNullOrWhiteSpace(smtpEmail) ||
     string.IsNullOrWhiteSpace(smtpPassword))
 {
-    Console.WriteLine("⚠ SMTP credentials missing - Email feature will NOT work properly");
+    Console.WriteLine("⚠ SMTP credentials missing");
 }
 else
 {
-    Console.WriteLine("✅ SMTP configured successfully");
+    Console.WriteLine("✅ SMTP configured");
 }
 
 // ================= SERVICES ================= //
@@ -111,36 +126,9 @@ using (var scope = app.Services.CreateScope())
     {
         context.Blogs.AddRange(new List<Blog>
         {
-            new Blog
-            {
-                Title = "AI in 2026",
-                Desc = "AI is growing rapidly...",
-                Image = "https://picsum.photos/300/200?1",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            },
-            new Blog
-            {
-                Title = "React UI Design",
-                Desc = "Reusable components",
-                Image = "https://picsum.photos/300/200?2",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            },
-            new Blog
-            {
-                Title = "JavaScript Tips",
-                Desc = "JS fundamentals",
-                Image = "https://picsum.photos/300/200?3",
-                Category = "blog",
-                IsUserCreated = false,
-                Author = "",
-                IsActive = true
-            }
+            new Blog { Title = "AI in 2026", Desc = "AI is growing rapidly...", Image = "https://picsum.photos/300/200?1", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
+            new Blog { Title = "React UI Design", Desc = "Reusable components", Image = "https://picsum.photos/300/200?2", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
+            new Blog { Title = "JavaScript Tips", Desc = "JS fundamentals", Image = "https://picsum.photos/300/200?3", Category = "blog", IsUserCreated = false, Author = "", IsActive = true }
         });
 
         context.SaveChanges();
@@ -170,12 +158,9 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ================= SWAGGER ================= //
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger always ON (optional)
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 
