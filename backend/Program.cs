@@ -45,9 +45,29 @@ builder.Services.AddCors(options =>
 
 // ================= DATABASE ================= //
 
-// 🔥 Railway DATABASE_URL OR local appsettings
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+// 🔥 FIX: Convert Railway DATABASE_URL → Npgsql format
+var rawConnection = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+string connectionString;
+
+if (!string.IsNullOrEmpty(rawConnection) && rawConnection.StartsWith("postgresql://"))
+{
+    var uri = new Uri(rawConnection);
+    var userInfo = uri.UserInfo.Split(':');
+
+    connectionString =
+        $"Host={uri.Host};" +
+        $"Port={uri.Port};" +
+        $"Database={uri.AbsolutePath.Trim('/')};" +
+        $"Username={userInfo[0]};" +
+        $"Password={userInfo[1]};" +
+        $"SSL Mode=Require;" +
+        $"Trust Server Certificate=true";
+}
+else
+{
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -158,7 +178,7 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger always ON (optional)
+// Swagger always ON
 app.UseSwagger();
 app.UseSwaggerUI();
 
