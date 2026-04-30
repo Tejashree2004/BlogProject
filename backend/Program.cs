@@ -15,7 +15,7 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔥 FIX FOR RAILWAY PORT (SAFE FOR LOCAL)
+// 🔥 FIX FOR RAILWAY PORT
 if (builder.Environment.IsProduction())
 {
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
@@ -45,13 +45,16 @@ builder.Services.AddCors(options =>
 
 // ================= DATABASE ================= //
 
-// 🔥 FIX: Convert Railway DATABASE_URL → Npgsql format
-var rawConnection = Environment.GetEnvironmentVariable("DATABASE_URL");
+// 🔥 Railway + Local safe connection
+var rawConnection =
+    Environment.GetEnvironmentVariable("DATABASE_URL") ??
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
 string connectionString;
 
 if (!string.IsNullOrEmpty(rawConnection) && rawConnection.StartsWith("postgresql://"))
 {
+    // 👉 Railway format convert
     var uri = new Uri(rawConnection);
     var userInfo = uri.UserInfo.Split(':');
 
@@ -64,8 +67,14 @@ if (!string.IsNullOrEmpty(rawConnection) && rawConnection.StartsWith("postgresql
         $"SSL Mode=Require;" +
         $"Trust Server Certificate=true";
 }
+else if (!string.IsNullOrEmpty(rawConnection))
+{
+    // 👉 Already correct format (Railway variable)
+    connectionString = rawConnection;
+}
 else
 {
+    // 👉 Local fallback ONLY
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
@@ -140,33 +149,40 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    context.Database.Migrate();
-
-    if (!context.Blogs.Any())
+    try
     {
-        context.Blogs.AddRange(new List<Blog>
-        {
-            new Blog { Title = "AI in 2026", Desc = "AI is growing rapidly...", Image = "https://picsum.photos/300/200?1", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
-            new Blog { Title = "React UI Design", Desc = "Reusable components", Image = "https://picsum.photos/300/200?2", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
-            new Blog { Title = "JavaScript Tips", Desc = "JS fundamentals", Image = "https://picsum.photos/300/200?3", Category = "blog", IsUserCreated = false, Author = "", IsActive = true }
-        });
+        context.Database.Migrate();
 
-        context.SaveChanges();
+        if (!context.Blogs.Any())
+        {
+            context.Blogs.AddRange(new List<Blog>
+            {
+                new Blog { Title = "AI in 2026", Desc = "AI is growing rapidly...", Image = "https://picsum.photos/300/200?1", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
+                new Blog { Title = "React UI Design", Desc = "Reusable components", Image = "https://picsum.photos/300/200?2", Category = "blog", IsUserCreated = false, Author = "", IsActive = true },
+                new Blog { Title = "JavaScript Tips", Desc = "JS fundamentals", Image = "https://picsum.photos/300/200?3", Category = "blog", IsUserCreated = false, Author = "", IsActive = true }
+            });
+
+            context.SaveChanges();
+        }
+
+        if (!context.Users.Any())
+        {
+            context.Users.Add(new User
+            {
+                Username = "testuser",
+                Email = "test@gmail.com",
+                Password = "12345678",
+                IsGuest = false,
+                CreatedDate = DateTime.UtcNow,
+                IsVerified = true
+            });
+
+            context.SaveChanges();
+        }
     }
-
-    if (!context.Users.Any())
+    catch (Exception ex)
     {
-        context.Users.Add(new User
-        {
-            Username = "testuser",
-            Email = "test@gmail.com",
-            Password = "12345678",
-            IsGuest = false,
-            CreatedDate = DateTime.UtcNow,
-            IsVerified = true
-        });
-
-        context.SaveChanges();
+        Console.WriteLine($"❌ DB ERROR: {ex.Message}");
     }
 }
 
@@ -178,7 +194,6 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger always ON
 app.UseSwagger();
 app.UseSwaggerUI();
 
